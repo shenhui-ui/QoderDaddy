@@ -46,7 +46,7 @@
 | `sleepSync` | 参照重写 | `scripts/atomic-file-write.js:8-12`（`defaultSleep`） | `SharedArrayBuffer` + `Atomics.wait` 的同步睡眠 |
 | `sanitizeSettingsForBackup` | 参照重写 | `scripts/lib.js:267-280`（`sanitizeModel`） | 借鉴"脱敏后再外露"的防御设计。本项目把对象从"单个模型"扩大到整份 settings，并改为白名单裁剪 |
 | `stripUrlCredentials` | 参照重写 | `scripts/lib.js:275`（`sanitizeModel` 内对 `url` 去 query/hash） | 同思路；本项目另补 userinfo（`user:pass@`）剥离 |
-| `redactLikelySecret`、`describeError` | 参照重写 | `scripts/sentry-report.js:158-183` | 借鉴其"外露前先脱敏"的处置。**上游该实现存在 Basic 认证场景的脱敏遗漏，本项目已修正**：`basic`/`bearer` 两种载荷均整体遮蔽（见 §4 备注） |
+| `redactLikelySecret`、`describeError` | 参照重写 | `scripts/sentry-report.js:158-183` | 借鉴其"外露前先脱敏"的处置。**上游该实现存在 Basic 认证场景的脱敏遗漏，本项目已修正**：`basic`/`bearer` 两种载荷均整体遮蔽（见 §4 备注）。2026-09-21 补：`describeError` 另剥离引号包裹的绝对路径 —— 上游的脱敏只覆盖凭据、不覆盖路径，而 Node 的 fs 报错会把 `C:\Users\<本机用户名>\…` 一并带进消息 |
 | `readJsonSafe`、`isPlainObject`、`toSafeString`、`findSensitiveKeys` | 独立实现 | — | 上游无对应物；本项目为区分"缺失 / 解析失败 / IO 失败 / 结构非法"而编写 |
 
 ### 3.2 `qoderdaddy/dist/node/lib/paths.cjs`
@@ -59,14 +59,14 @@
 
 | 符号 | 类型 | 上游参照位置 | 说明 |
 |---|---|---|---|
-| `activate`、`deactivate`、`createServiceMethods`、服务方法、`pruneBackups` | 独立实现 | — | 依 Qoder CN `pluginHost` 的 `node.registerService` 契约编写。上游的 daemon / watchdog / 端口阶梯 / 共享密钥等基础设施在插件路径上不需要（设计文档 §3.5(3)），故无对应移植物 |
+| `activate`、`deactivate`、`createServiceMethods`、服务方法、`pruneBackups` | 独立实现 | — | 依 Qoder CN `pluginHost` 的 `node.registerService` 契约编写。上游的 daemon / watchdog / 端口阶梯 / 共享密钥等基础设施在插件路径上不需要（设计文档 §3.5(3)），故无对应移植物。2026-09-21 补：服务方法一律以结构化结果上报失败（`backupLocalState` 的 `write-failed` 亦然，不再向宿主抛裸异常），对应 `SECURITY.md` 约束 5「失败要可归因」 |
 
 ### 3.4 `qoderdaddy/dist/browser/view.cjs`
 
 | 符号 | 类型 | 上游参照位置 | 说明 |
 |---|---|---|---|
 | `qoderPluginView.register`、`context.api.node.callService` 的用法 | 接口契约 | — | 契约来自 Qoder CN 随包插件，与 WorkDaddy 无关 |
-| 渲染层整体（`el` 白名单赋值、`renderProviders`、主题同步） | 参照重写 | 设计文档 §1.5、§3.5(2)(6) 所转述的上游工程约束 | "窄 MutationObserver 观察 + 幂等清理 + 失败可退化为无增强"三条取向源自上游 `inject.js` 的工程约束（宽观察在上游有崩溃前车之鉴）。DOM 结构与样式为本项目独立编写 |
+| 渲染层整体（`el` 白名单赋值、`renderProviders`、主题同步） | 参照重写 | 设计文档 §1.5、§3.5(2)(6) 所转述的上游工程约束 | "窄 MutationObserver 观察 + 幂等清理 + 失败可退化为无增强"三条取向源自上游 `inject.js` 的工程约束（宽观察在上游有崩溃前车之鉴）。DOM 结构与样式为本项目独立编写。2026-09-21 补：`renderProviders` 区分"未配置"与"配置全部非法"三态 —— 对应 `SECURITY.md` 约束 5 的"不得伪装成正常空态" |
 
 ### 3.5 其余文件
 
@@ -113,3 +113,4 @@
 |---|---|
 | 2026-09-20 | 初版建立。依据当时代码审查的许可证结论补全 `LICENSE` 与溯源，并据此确定许可证为 `AGPL-3.0-or-later` |
 | 2026-09-20 | 第二轮全量审计后的订正：① 修正一处符号名错误（原记为 `sanitizeProvidersForBackup`，实际为 `sanitizeSettingsForBackup`）；② 补齐此前漏登记的符号（`stripUrlCredentials`、`redactLikelySecret`、`describeError`、`findSensitiveKeys`、`toSafeString`、`sleepSync`、`renameWithRetry` 及视图渲染）；③ 视图渲染由"接口契约"改判为"参照重写"；④ 移除对未入库的 `CODE-REVIEW-*.md` 的引用（见 §5）；⑤ 补记上游版权行核对结论 |
+| 2026-09-21 | 第三轮排查后的补记：① `describeError` 增加绝对路径剥离（§3.1）；② `backupLocalState` 写盘失败改为结构化返回（§3.3）；③ `renderProviders` 区分"未配置"与"配置全部非法"（§3.4）。三处均为既有符号内部的行为收紧，未引入新符号、未新增上游对应物，故不新增登记行 |

@@ -345,3 +345,25 @@ test("backupLocalState：按 maxBackups 裁剪历史备份", async () => {
   const remaining = fs.readdirSync(path.join(store, "backup"));
   assert.equal(remaining.length, 2, `期望保留 2 份，实际 ${remaining.length} 份`);
 });
+
+test("backupLocalState：写盘失败时结构化返回原因，不向宿主抛裸异常", async () => {
+  const store = tempDir("qd-store-");
+  // 让存储路径指向一个**文件**：创建 backup 子目录必然失败
+  const blocker = path.join(store, "blocker");
+  fs.writeFileSync(blocker, "not a directory", "utf8");
+  const source = tempDir("qd-src-");
+  const settingsPath = writeSettings(source, { providers: { demo: { model: "m" } } });
+
+  // 回归：此前 mkdirSync / atomicWrite 的异常会裸抛给宿主，宿主只能给出通用错误码，
+  // 与 SECURITY.md「失败要可归因」相反 —— 同模块其余方法一律返回结构化原因。
+  const result = await methodsFor({
+    storagePath: blocker,
+    settingsPath,
+    appStatusPath: path.join(source, "none.json")
+  }).backupLocalState();
+
+  assert.equal(result.ok, false, "写盘失败不得报成功");
+  assert.equal(result.reason, "write-failed");
+  assert.equal(typeof result.error, "string");
+  assert.deepEqual(result.saved, []);
+});

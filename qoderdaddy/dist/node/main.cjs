@@ -314,29 +314,43 @@ function createServiceMethods(ctx, overrides) {
       const targetDir = path.join(storagePath, BACKUP_DIR_NAME, `${stamp}-${unique}`);
       const saved = [];
 
-      fs.mkdirSync(targetDir, { recursive: true, mode: 0o700 });
-      for (const entry of pending) {
-        atomicWrite(path.join(targetDir, entry.name), `${JSON.stringify(entry.data, null, 2)}\n`);
-        saved.push(entry.name);
+      // 落盘全程容错：mkdir / 写入 / 裁剪都可能失败（无权限、磁盘满、路径被文件占位）。
+      // 裸抛异常会让宿主只给出通用错误码，而 SECURITY.md 要求失败可归因 ——
+      // 因此与 status / authState / providers 一致，改为结构化返回。
+      try {
+        fs.mkdirSync(targetDir, { recursive: true, mode: 0o700 });
+        for (const entry of pending) {
+          atomicWrite(path.join(targetDir, entry.name), `${JSON.stringify(entry.data, null, 2)}\n`);
+          saved.push(entry.name);
+        }
+
+        const manifest = {
+          schema: 1,
+          createdAt: new Date().toISOString(),
+          pluginVersion: toSafeString(ctx && ctx.plugin ? ctx.plugin.version : "", 40),
+          containsCredentials: false,
+          // 快照是白名单裁剪的产物（凭据字段、未知字段、URL 查询串均已丢弃），
+          // 因此**不能**当作 settings.json 的恢复源；恢复会丢失 API Key。
+          restorable: false,
+          providerFieldsKept: PROVIDER_SAFE_FIELDS,
+          saved,
+          skipped
+        };
+        atomicWrite(path.join(targetDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+
+        const pruned = pruneBackups(path.join(storagePath, BACKUP_DIR_NAME), pruneLimit);
+
+        return { ok: true, targetDir, saved, skipped, pruned };
+      } catch (error) {
+        return {
+          ok: false,
+          reason: "write-failed",
+          targetDir,
+          saved,
+          skipped,
+          error: describeError(error)
+        };
       }
-
-      const manifest = {
-        schema: 1,
-        createdAt: new Date().toISOString(),
-        pluginVersion: toSafeString(ctx && ctx.plugin ? ctx.plugin.version : "", 40),
-        containsCredentials: false,
-        // 快照是白名单裁剪的产物（凭据字段、未知字段、URL 查询串均已丢弃），
-        // 因此**不能**当作 settings.json 的恢复源；恢复会丢失 API Key。
-        restorable: false,
-        providerFieldsKept: PROVIDER_SAFE_FIELDS,
-        saved,
-        skipped
-      };
-      atomicWrite(path.join(targetDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-
-      const pruned = pruneBackups(path.join(storagePath, BACKUP_DIR_NAME), pruneLimit);
-
-      return { ok: true, targetDir, saved, skipped, pruned };
     }
   };
 }

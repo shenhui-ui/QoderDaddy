@@ -84,10 +84,21 @@ function redactLikelySecret(text) {
     .replace(/\b(?:sk|key|ghp|gho|xox[baprs])-[A-Za-z0-9_-]{8,}\b/g, "[redacted]");
 }
 
-/** 把异常折叠成可安全外露的单行描述（长度受限、疑似凭据已遮蔽）。 */
+/**
+ * 引号包裹的绝对路径。只匹配**路径形态**的内容：
+ *  - Windows 盘符路径（`C:\...` / `C:/...`）与 UNC 路径（`\\host\share\...`）；
+ *  - 至少两级以上的 POSIX 路径（`/a/b`）—— 要求出现第二个斜杠是为了不误伤 `/v1` 这类接口片段。
+ * Node 的 fs 报错一律把路径用单引号包裹（形如 `open 'C:\...'`），故以引号为边界足够精确。
+ *
+ * 已知不完备：路径自身含单引号（`C:\Users\O'Brien\`）时，第一条引号会被当成分隔符，
+ * 残留 `Brien\...'`。这种用户名极罕见；且剥离只可能让外露信息变少，不会变多。
+ */
+const QUOTED_ABSOLUTE_PATH = /(['"])(?:[a-zA-Z]:[\\/]|\\\\|\/(?:[^'"]*\/))[^'"]*\1/g;
+
+/** 把异常折叠成可安全外露的单行描述（长度受限、疑似凭据已遮蔽、**绝对路径已剥离**）。 */
 function describeError(error) {
   const message = error && error.message ? error.message : String(error);
-  return redactLikelySecret(message).slice(0, 200);
+  return redactLikelySecret(message).replace(QUOTED_ABSOLUTE_PATH, "$1<path>$1").slice(0, 200);
 }
 
 /**

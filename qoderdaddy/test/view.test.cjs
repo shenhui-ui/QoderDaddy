@@ -358,3 +358,36 @@ test("dispose 移除注入的 DOM，重复调用不抛错", async () => {
   );
   assert.doesNotThrow(() => instance.dispose());
 });
+
+test("providers 全部记录结构非法时不得报成「没有配置」", async () => {
+  const { container, instance } = mountView({
+    status: STATUS,
+    authState: AUTH,
+    providers: { ...PROVIDERS_OK, count: 0, skipped: 2, list: [] }
+  });
+  await flush();
+
+  const text = container.text();
+  // 回归：count===0 有两种成因 —— 真的没配，以及**配了但全部结构非法**。
+  // 早期实现把两者合并为"确实没有配置任何 provider"，等于把结构故障伪装成空态，
+  // 并且与紧随其后的"已跳过 N 条"自相矛盾。
+  assert.ok(!text.includes("确实没有配置"), `把结构故障伪装成了空配置：${text}`);
+  assert.ok(text.includes("2"), `应报出被跳过的条数：${text}`);
+  assert.ok(text.includes("结构均非法"), `应点明成因：${text}`);
+  assert.ok(!text.includes("undefined"), `文案出现未替换的占位符：${text}`);
+  instance.dispose();
+});
+
+test("providers 确实没有配置时显示空态文案，且不出现跳过提示", async () => {
+  const { container, instance } = mountView({
+    status: STATUS,
+    authState: AUTH,
+    providers: { ...PROVIDERS_OK, count: 0, skipped: 0, list: [] }
+  });
+  await flush();
+
+  const text = container.text();
+  assert.ok(text.includes("确实没有配置"), `空态文案缺失：${text}`);
+  assert.ok(!text.includes("跳过"), `空态下不应出现跳过提示：${text}`);
+  instance.dispose();
+});

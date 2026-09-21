@@ -12,6 +12,7 @@ const {
   maskSecret,
   stripUrlCredentials,
   redactLikelySecret,
+  describeError,
   readJsonSafe,
   atomicWrite,
   renameWithRetry,
@@ -259,4 +260,36 @@ test("sanitizeSettingsForBackup：非对象输入返回结构化失败而非静�
   const result = sanitizeSettingsForBackup({ providers: "ab" });
   assert.equal(result.ok, true);
   assert.equal(result.data.providers, undefined);
+});
+
+test("describeError：折叠为单行描述时剥离绝对路径（不得回显本机用户名）", () => {
+  // Node 的 fs 错误消息形如 `EBUSY: resource busy or locked, open 'C:\Users\<用户名>\...'`。
+  // 该文本会经 providers().error 渲染到**默认可见**的卡片上 —— 与 R-02 修复的
+  // "缺失态不回显路径"是同一份数据的两种处置，必须一致。
+  const busy = new Error("EBUSY: resource busy or locked, open 'C:\\Users\\tester\\.qoder-cn\\settings.json'");
+  busy.code = "EBUSY";
+  const described = describeError(busy);
+  assert.ok(!described.includes("tester"), `错误描述泄漏了本机用户名：${described}`);
+  assert.ok(!described.includes("Users"), `错误描述泄漏了用户目录：${described}`);
+  assert.ok(described.includes("EBUSY"), "errno 码必须保留 —— 归因依赖它");
+
+  const denied = new Error("EACCES: permission denied, open '/home/tester/.qoder-cn/settings.json'");
+  assert.ok(!describeError(denied).includes("tester"), "POSIX 绝对路径同样必须剥离");
+
+  // 不得误伤正常文本：引号内的短标记不是路径
+  assert.equal(
+    describeError(new Error("Unexpected token '}' in JSON at position 5")),
+    "Unexpected token '}' in JSON at position 5"
+  );
+  assert.equal(describeError(new Error("permission denied by policy")), "permission denied by policy");
+});
+
+test("readJsonSafe：读目录报 io-error，且错误描述不夹带该路径", () => {
+  const dir = tempDir();
+  const result = readJsonSafe(dir);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "io-error", "非 ENOENT 的 IO 失败必须与缺失区分开");
+  assert.equal(typeof result.error, "string");
+  // 平台相关的不变量：无论底层消息是否带路径，外露文本都不得包含它
+  assert.ok(!result.error.includes(dir), `错误描述回显了绝对路径：${result.error}`);
 });

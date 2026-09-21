@@ -241,13 +241,22 @@
         }
 
         const children = [el("h3", {}, [`模型提供方 · ${payload.count}`])];
-        if (payload.count === 0) {
-          children.push(el("div", { className: "qd-state" }, ["settings.json 中确实没有配置任何 provider"]));
-        } else {
+        if (payload.count > 0) {
           children.push(table);
-        }
-        if (payload.skipped > 0) {
-          children.push(el("div", { className: "qd-state" }, [`已跳过 ${payload.skipped} 条结构非法的记录`]));
+          if (payload.skipped > 0) {
+            children.push(el("div", { className: "qd-state" }, [`已跳过 ${payload.skipped} 条结构非法的记录`]));
+          }
+        } else if (payload.skipped > 0) {
+          // count===0 有两种成因：真的没配，以及**配了但全部结构非法**。
+          // 合并成"确实没有配置任何 provider"等于把结构故障伪装成空态（与 providers 三态修正
+          // 属同一类反向错报），且与紧随其后的"已跳过 N 条"自相矛盾。
+          children.push(
+            el("div", { className: "qd-state" }, [
+              `settings.json 中配置了 ${payload.skipped} 条记录，但结构均非法，已全部跳过`
+            ])
+          );
+        } else {
+          children.push(el("div", { className: "qd-state" }, ["settings.json 中确实没有配置任何 provider"]));
         }
         providersCard.replaceChildren(...children);
       }
