@@ -1,0 +1,19 @@
+{
+  "name": "qoderdaddy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Qoder CN 增强层 —— 官方 App Plugin 形态（WorkDaddy 的 Qoder CN 适配）",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check dist/node/main.cjs && node --check dist/node/lib/paths.cjs && node --check dist/node/lib/security.cjs && node --check dist/browser/view.cjs"
+  },
+  "keywords": [
+    "qoder",
+    "qoder-cn",
+    "app-plugin"
+  ]
+}

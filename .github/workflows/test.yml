@@ -1,0 +1,84 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: node ${{ matrix.node }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # 插件运行在宿主内嵌的 Node 上；Windows 是主要目标平台，两个平台都要跑
+        node: [20, 22]
+
+    defaults:
+      run:
+        working-directory: qoderdaddy
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: 语法自检
+        run: npm run check
+
+      - name: 单元测试
+        run: npm test
+
+  hygiene:
+    name: 仓库卫生
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 上游参考源码与工作区内部资料绝不入库。发布前拦一道，避免误提交。
+      - name: 检查不应入库的路径
+        run: |
+          set -eu
+          for path in _analysis .workbuddy .internal; do
+            if [ -e "$path" ]; then
+              echo "::error::$path 存在于检出结果中，但它必须被 .gitignore 排除"
+              exit 1
+            fi
+          done
+
+      # 内部审查报告含对第三方上游的可利用性分析，只应留在本机
+      - name: 检查内部审查报告未入库
+        run: |
+          set -eu
+          if ls CODE-REVIEW-*.md >/dev/null 2>&1; then
+            echo "::error::检出结果中含内部代码审查报告（CODE-REVIEW-*.md），它必须被 .gitignore 排除"
+            exit 1
+          fi
+
+      # 个人绝对路径不应出现在任何公开文件中
+      - name: 检查个人路径泄漏
+        run: |
+          set -eu
+          if grep -rniE '[A-Z]:\\Users\\[A-Za-z0-9._-]+' \
+               --include='*.md' --include='*.json' --include='*.cjs' --include='*.yml' . ; then
+            echo "::error::检出结果中含本机用户绝对路径，请改为占位形式"
+            exit 1
+          fi
+
+      # 许可证与归属文件是 AGPL 义务的一部分
+      - name: 检查许可证文件存在
+        run: |
+          set -eu
+          for file in LICENSE NOTICE PROVENANCE.md SECURITY.md README.md; do
+            test -f "$file" || { echo "::error::缺少 $file"; exit 1; }
+          done
+          grep -q 'GNU AFFERO GENERAL PUBLIC LICENSE' LICENSE
+          echo "许可证文件齐备"

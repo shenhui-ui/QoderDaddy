@@ -1,0 +1,40 @@
+QoderDaddy
+Copyright (C) 2026 QoderDaddy Contributors
+
+本程序为自由软件，你可以依 GNU Affero General Public License 第 3 版
+（或任何更新版本）的条款重新发布和/或修改它。
+
+本程序的发布是希望其有用，但不提供任何担保，甚至不提供适销性或
+特定用途适用性的默示担保。详见 GNU Affero General Public License。
+
+许可证全文见同目录 LICENSE 文件，亦可参见
+<https://www.gnu.org/licenses/agpl-3.0.txt>
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+────────────────────────────────────────────────────────────────────
+上游归属
+────────────────────────────────────────────────────────────────────
+
+本项目是 WorkDaddy 的衍生作品。
+
+  WorkDaddy — 面向 WorkBuddy 桌面端的 CDP 增强工具
+  Copyright (C) 2024-2026 WorkDaddy Contributors
+  AGPL-3.0-or-later
+  https://github.com/babygoton/WorkDaddy
+
+本项目在其设计方法、工程约束与部分实现的基础上，面向 Qoder CN 重新实现。
+依据 AGPL-3.0 的传染性条款，本项目同样以 AGPL-3.0-or-later 发布。
+逐项溯源记录见 PROVENANCE.md。
+
+────────────────────────────────────────────────────────────────────
+边界声明
+────────────────────────────────────────────────────────────────────
+
+QoderDaddy 是面向 Qoder CN 桌面端的本地增强层，只服务本机已登录用户。
+
+它不修改、不重签名、不重新打包 Qoder CN 官方安装包；不绕过任何认证机制；
+不读取或上传 Qoder CN 的私有服务器协议；不迁移他人凭证。
+
+Qoder CN 及其商标、官方资源归其权利人所有。QoderDaddy 与 Qoder 官方
+无隶属关系，未获其背书、授权或认可。

@@ -1,0 +1,47 @@
+{
+  "id": "qoderdaddy.enhance",
+  "name": "QoderDaddy",
+  "version": "0.1.0",
+  "engines": {
+    "qoder": ">=0.3.4"
+  },
+  "main": "dist/node/main.cjs",
+  "activationEvents": [
+    "onStartup",
+    "onView:qoderdaddy-panel"
+  ],
+  "permissions": [
+    "auth.readState",
+    "node.callService"
+  ],
+  "contributes": {
+    "views": [
+      {
+        "id": "qoderdaddy-panel",
+        "title": {
+          "default": "QoderDaddy",
+          "translations": {
+            "zh-CN": "QoderDaddy"
+          }
+        },
+        "location": "workbench",
+        "hostHeader": "hidden",
+        "entry": "dist/browser/view.cjs"
+      }
+    ],
+    "sidebarNavItems": [
+      {
+        "id": "qoderdaddy-sidebar",
+        "title": {
+          "default": "QoderDaddy",
+          "translations": {
+            "zh-CN": "QoderDaddy"
+          }
+        },
+        "icon": "assets/qoderdaddy.svg",
+        "viewId": "qoderdaddy-panel",
+        "slot": "workbench.sidebar.secondary"
+      }
+    ]
+  }
+}
