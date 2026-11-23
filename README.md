@@ -1,5 +1,8 @@
 # QoderDaddy
 
+[![test](https://github.com/shenhui-ui/QoderDaddy/actions/workflows/test.yml/badge.svg)](https://github.com/shenhui-ui/QoderDaddy/actions/workflows/test.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+
 面向 **Qoder CN 桌面端**的本地增强层，以 **Qoder CN 官方 App Plugin 形态**实现。
 
 > 状态：**pre-release（P0 骨架）**。插件尚未在真实客户端上完成加载验证，当前能力仅覆盖状态查询、登录态读取与本地状态快照。功能路线见 [设计文档](WorkDaddy-QoderCN-转换方案.md)。
